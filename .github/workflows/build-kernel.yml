@@ -1,13 +1,121 @@
 name: Build Kernel
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      kernel_source:
+        description: "Kernel source URL"
+        required: true
+        default: "https://github.com/afterallafk/sinsperf_kernel_xiaomi_onclite"
+        type: string
+      kernel_source_branch:
+        description: "Kernel source branch"
+        required: true
+        default: "12.1"
+        type: string
+      kernel_config:
+        description: "Kernel configuration"
+        required: true
+        default: "onclite-perf_defconfig"
+        type: string
+      kernel_image_name:
+        description: "Kernel image name"
+        required: true
+        default: "Image.gz-dtb"
+        type: string
+      arch:
+        description: "Target architecture"
+        required: true
+        default: "arm64"
+        type: string
+      enable_custom_clang:
+        description: "Enable custom Clang"
+        required: true
+        default: "false"
+        type: boolean
+      custom_clang_source:
+        description: "Custom Clang source URL"
+        required: true
+        default: ""
+        type: string
+      custom_clang_branch:
+        description: "Custom Clang branch"
+        required: true
+        default: ""
+        type: string
+      clang_branch:
+        description: "Clang branch"
+        required: true
+        default: "master-kernel-build-2022"
+        type: string
+      clang_version:
+        description: "Clang version"
+        required: true
+        default: "r450784d"
+        type: string
+      enable_gcc_arm64:
+        description: "Enable GCC for ARM64"
+        required: true
+        default: "true"
+        type: boolean
+      enable_gcc_arm32:
+        description: "Enable GCC for ARM32"
+        required: true
+        default: "true"
+        type: boolean
+      enable_kernelsu:
+        description: "Enable KernelSU"
+        required: true
+        default: "true"
+        type: boolean
+      kernelsu_tag:
+        description: "KernelSU tag"
+        required: true
+        default: "main"
+        type: string
+      disable_lto:
+        description: "Disable LTO"
+        required: true
+        default: "false"
+        type: boolean
+      disable_cc_werror:
+        description: "Disable CC WERROR"
+        required: true
+        default: "false"
+        type: boolean
+      add_kprobes_config:
+        description: "Add Kprobes config"
+        required: true
+        default: "true"
+        type: boolean
+      add_overlayfs_config:
+        description: "Add OverlayFS config"
+        required: true
+        default: "true"
+        type: boolean
+      enable_ccache:
+        description: "Enable ccache"
+        required: true
+        default: "true"
+        type: boolean
+      need_dtbo:
+        description: "Need DTBO image"
+        required: true
+        default: "false"
+        type: boolean
+      build_boot_img:
+        description: "Build boot images"
+        required: true
+        default: "true"
+        type: boolean
+      source_boot_image:
+        description: "Source boot image URL"
+        required: true
+        default: "https://raw.githubusercontent.com/H3XDaemon/KernelSU_Action/main/boot/boot.img"
+        type: string
 
 jobs:
-  build:
+  build_kernel:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,36 +124,32 @@ jobs:
 
       - name: Set up environment
         run: |
-          KERNEL_SOURCE=${{ env.KERNEL_SOURCE:-https://github.com/afterallafk/sinsperf_kernel_xiaomi_onclite }}
-          KERNEL_SOURCE_BRANCH=${{ env.KERNEL_SOURCE_BRANCH:-12.1 }}
-          KERNEL_CONFIG=${{ env.KERNEL_CONFIG:-onclite-perf_defconfig }}
-          KERNEL_IMAGE_NAME=${{ env.KERNEL_IMAGE_NAME:-Image.gz-dtb }}
-          ARCH=${{ env.ARCH:-arm64 }}
-          EXTRA_CMDS:LD=${{ env.EXTRA_CMDS:LD:-ld.lld }}
+          KERNEL_SOURCE=${{ github.event.inputs.kernel_source }}
+          KERNEL_SOURCE_BRANCH=${{ github.event.inputs.kernel_source_branch }}
+          KERNEL_CONFIG=${{ github.event.inputs.kernel_config }}
+          KERNEL_IMAGE_NAME=${{ github.event.inputs.kernel_image_name }}
+          ARCH=${{ github.event.inputs.arch }}
+          ENABLE_CUSTOM_CLANG=${{ github.event.inputs.enable_custom_clang }}
+          CUSTOM_CLANG_SOURCE=${{ github.event.inputs.custom_clang_source }}
+          CUSTOM_CLANG_BRANCH=${{ github.event.inputs.custom_clang_branch }}
+          CLANG_BRANCH=${{ github.event.inputs.clang_branch }}
+          CLANG_VERSION=${{ github.event.inputs.clang_version }}
+          ENABLE_GCC_ARM64=${{ github.event.inputs.enable_gcc_arm64 }}
+          ENABLE_GCC_ARM32=${{ github.event.inputs.enable_gcc_arm32 }}
+          ENABLE_KERNELSU=${{ github.event.inputs.enable_kernelsu }}
+          KERNELSU_TAG=${{ github.event.inputs.kernelsu_tag }}
+          DISABLE_LTO=${{ github.event.inputs.disable_lto }}
+          DISABLE_CC_WERROR=${{ github.event.inputs.disable_cc_werror }}
+          ADD_KPROBES_CONFIG=${{ github.event.inputs.add_kprobes_config }}
+          ADD_OVERLAYFS_CONFIG=${{ github.event.inputs.add_overlayfs_config }}
+          ENABLE_CCACHE=${{ github.event.inputs.enable_ccache }}
+          NEED_DTBO=${{ github.event.inputs.need_dtbo }}
+          BUILD_BOOT_IMG=${{ github.event.inputs.build_boot_img }}
+          SOURCE_BOOT_IMAGE=${{ github.event.inputs.source_boot_image }}
 
-          USE_CUSTOM_CLANG=${{ env.USE_CUSTOM_CLANG:-false }}
-          CLANG_BRANCH=${{ env.CLANG_BRANCH:-master-kernel-build-2022 }}
-          CLANG_VERSION=${{ env.CLANG_VERSION:-r450784d }}
-
-          ENABLE_GCC_ARM64=${{ env.ENABLE_GCC_ARM64:-true }}
-          ENABLE_GCC_ARM32=${{ env.ENABLE_GCC_ARM32:-true }}
-
-          ENABLE_KERNELSU=${{ env.ENABLE_KERNELSU:-true }}
-          KERNELSU_TAG=${{ env.KERNELSU_TAG:-main }}
-
-          DISABLE_LTO=${{ env.DISABLE_LTO:-false }}
-          DISABLE_CC_WERROR=${{ env.DISABLE_CC_WERROR:-false }}
-          ADD_KPROBES_CONFIG=${{ env.ADD_KPROBES_CONFIG:-true }}
-          ADD_OVERLAYFS_CONFIG=${{ env.ADD_OVERLAYFS_CONFIG:-true }}
-
-          ENABLE_CCACHE=${{ env.ENABLE_CCACHE:-true }}
-
-          NEED_DTBO=${{ env.NEED_DTBO:-false }}
-
-          BUILD_BOOT_IMG=${{ env.BUILD_BOOT_IMG:-true }}
-          SOURCE_BOOT_IMAGE=${{ env.SOURCE_BOOT_IMAGE:-https://raw.githubusercontent.com/H3XDaemon/KernelSU_Action/main/boot/boot.img }}
+          # Add any other environment variables or setup commands here
 
       - name: Build Kernel
         run: |
           # Add build commands here using the environment variables
-          # Example: make KERNEL_CONFIG=${KERNEL_CONFIG} ARCH=${ARCH}
+          # Example: make KERNEL_SOURCE=${KERNEL_SOURCE} KERNEL_CONFIG=${KERNEL_CONFIG} ARCH=${ARCH}
