@@ -1,155 +1,173 @@
 name: Build Kernel
-
 on:
   workflow_dispatch:
     inputs:
       kernel_source:
-        description: "Kernel source URL"
+        description: 'Kernel source URL'
         required: true
-        default: "https://github.com/afterallafk/sinsperf_kernel_xiaomi_onclite"
-        type: string
       kernel_source_branch:
-        description: "Kernel source branch"
+        description: 'Kernel source branch'
         required: true
-        default: "12.1"
-        type: string
       kernel_config:
-        description: "Kernel configuration"
+        description: 'Kernel config file'
         required: true
-        default: "onclite-perf_defconfig"
-        type: string
       kernel_image_name:
-        description: "Kernel image name"
+        description: 'Kernel image name'
         required: true
-        default: "Image.gz-dtb"
-        type: string
       arch:
-        description: "Target architecture"
+        description: 'Architecture'
         required: true
-        default: "arm64"
-        type: string
-      enable_custom_clang:
-        description: "Enable custom Clang"
+      extra_cmds:
+        description: 'Extra commands'
+        required: false
+      use_custom_clang:
+        description: 'Use custom clang? (true/false)'
         required: true
-        default: "false"
-        type: boolean
       custom_clang_source:
-        description: "Custom Clang source URL"
-        required: true
-        default: ""
-        type: string
+        description: 'Custom clang source URL'
+        required: false
       custom_clang_branch:
-        description: "Custom Clang branch"
-        required: true
-        default: ""
-        type: string
+        description: 'Custom clang branch'
+        required: false
+      custom_cmds:
+        description: 'Custom commands'
+        required: false
       clang_branch:
-        description: "Clang branch"
-        required: true
-        default: "master-kernel-build-2022"
-        type: string
+        description: 'Clang branch'
+        required: false
       clang_version:
-        description: "Clang version"
-        required: true
-        default: "r450784d"
-        type: string
+        description: 'Clang version'
+        required: false
       enable_gcc_arm64:
-        description: "Enable GCC for ARM64"
+        description: 'Enable GCC for ARM64? (true/false)'
         required: true
-        default: "true"
-        type: boolean
       enable_gcc_arm32:
-        description: "Enable GCC for ARM32"
+        description: 'Enable GCC for ARM32? (true/false)'
         required: true
-        default: "true"
-        type: boolean
       enable_kernelsu:
-        description: "Enable KernelSU"
+        description: 'Enable KernelSU? (true/false)'
         required: true
-        default: "true"
-        type: boolean
       kernelsu_tag:
-        description: "KernelSU tag"
-        required: true
-        default: "main"
-        type: string
-      disable_lto:
-        description: "Disable LTO"
-        required: true
-        default: "false"
-        type: boolean
-      disable_cc_werror:
-        description: "Disable CC WERROR"
-        required: true
-        default: "false"
-        type: boolean
+        description: 'KernelSU tag'
+        required: false
       add_kprobes_config:
-        description: "Add Kprobes config"
-        required: true
-        default: "true"
-        type: boolean
+        description: 'Add kprobes config? (true/false)'
+        required: false
+      disable_lto:
+        description: 'Disable LTO? (true/false)'
+        required: false
       add_overlayfs_config:
-        description: "Add OverlayFS config"
-        required: true
-        default: "true"
-        type: boolean
+        description: 'Add overlayfs config? (true/false)'
+        required: false
+      disable_cc_werror:
+        description: 'Disable CC_WERROR? (true/false)'
+        required: false
       enable_ccache:
-        description: "Enable ccache"
-        required: true
-        default: "true"
-        type: boolean
+        description: 'Enable ccache? (true/false)'
+        required: false
       need_dtbo:
-        description: "Need DTBO image"
-        required: true
-        default: "false"
-        type: boolean
+        description: 'Need DTBO? (true/false)'
+        required: false
       build_boot_img:
-        description: "Build boot images"
-        required: true
-        default: "true"
-        type: boolean
+        description: 'Build boot image? (true/false)'
+        required: false
       source_boot_image:
-        description: "Source boot image URL"
-        required: true
-        default: "https://raw.githubusercontent.com/H3XDaemon/KernelSU_Action/main/boot/boot.img"
-        type: string
+        description: 'Source boot image URL'
+        required: false
 
 jobs:
-  build_kernel:
+  build:
+    name: Build Kernel by ${{ github.actor }}
     runs-on: ubuntu-latest
-
+    if: github.event.repository.owner.id == github.event.sender.id
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - name: Set up environment
+      - name: Setup build kernel environment
         run: |
-          KERNEL_SOURCE=${{ github.event.inputs.kernel_source }}
-          KERNEL_SOURCE_BRANCH=${{ github.event.inputs.kernel_source_branch }}
-          KERNEL_CONFIG=${{ github.event.inputs.kernel_config }}
-          KERNEL_IMAGE_NAME=${{ github.event.inputs.kernel_image_name }}
-          ARCH=${{ github.event.inputs.arch }}
-          ENABLE_CUSTOM_CLANG=${{ github.event.inputs.enable_custom_clang }}
-          CUSTOM_CLANG_SOURCE=${{ github.event.inputs.custom_clang_source }}
-          CUSTOM_CLANG_BRANCH=${{ github.event.inputs.custom_clang_branch }}
-          CLANG_BRANCH=${{ github.event.inputs.clang_branch }}
-          CLANG_VERSION=${{ github.event.inputs.clang_version }}
-          ENABLE_GCC_ARM64=${{ github.event.inputs.enable_gcc_arm64 }}
-          ENABLE_GCC_ARM32=${{ github.event.inputs.enable_gcc_arm32 }}
-          ENABLE_KERNELSU=${{ github.event.inputs.enable_kernelsu }}
-          KERNELSU_TAG=${{ github.event.inputs.kernelsu_tag }}
-          DISABLE_LTO=${{ github.event.inputs.disable_lto }}
-          DISABLE_CC_WERROR=${{ github.event.inputs.disable_cc_werror }}
-          ADD_KPROBES_CONFIG=${{ github.event.inputs.add_kprobes_config }}
-          ADD_OVERLAYFS_CONFIG=${{ github.event.inputs.add_overlayfs_config }}
-          ENABLE_CCACHE=${{ github.event.inputs.enable_ccache }}
-          NEED_DTBO=${{ github.event.inputs.need_dtbo }}
-          BUILD_BOOT_IMG=${{ github.event.inputs.build_boot_img }}
-          SOURCE_BOOT_IMAGE=${{ github.event.inputs.source_boot_image }}
+          echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M")" >> $GITHUB_ENV
+          echo "DEVICE=$(echo ${{ github.event.inputs.kernel_config }} | sed 's!vendor/!!;s/_defconfig//;s/_user//;s/-perf//')" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install git ccache automake flex lzop bison lib32ncurses5-dev libssl-dev \
+            libselinux1-dev lzop build-essential openjdk-8-jdk -y
+          sudo update-alternatives --config java <<< "2"
+          sudo update-alternatives --config javac <<< "2"
+          sudo update-alternatives --config javadoc <<< "2"
+          sudo update-alternatives --config jarsigner <<< "2"
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          chmod a+x ~/repo
+          sudo mv ~/repo /usr/local/bin
 
-          # Add any other environment variables or setup commands here
-
-      - name: Build Kernel
+      - name: Configure git
         run: |
-          # Add build commands here using the environment variables
-          # Example: make KERNEL_SOURCE=${KERNEL_SOURCE} KERNEL_CONFIG=${KERNEL_CONFIG} ARCH=${ARCH}
+          git config --global user.name ${{ github.actor }}
+          git config --global user.email ${{ github.actor }}@users.noreply.github.com
+
+      - name: Clone custom clang if needed
+        if: ${{ github.event.inputs.use_custom_clang == 'true' }}
+        run: |
+          git clone --depth=1 --single-branch --branch=${{ github.event.inputs.custom_clang_branch }} ${{ github.event.inputs.custom_clang_source }} custom_clang
+
+      - name: Clone kernel source
+        run: |
+          git clone --depth=1 --single-branch --branch=${{ github.event.inputs.kernel_source_branch }} ${{ github.event.inputs.kernel_source }} kernel
+
+      - name: Copy kernel config
+        run: |
+          cp ${{ github.event.inputs.kernel_config }} kernel/.config
+
+      - name: Apply custom commands
+        if: ${{ github.event.inputs.custom_cmds }}
+        run: |
+          cd kernel
+          ${{ github.event.inputs.custom_cmds }}
+
+      - name: Set clang version
+        if: ${{ github.event.inputs.clang_version }}
+        run: |
+          cd kernel
+          ./scripts/setlocalversion --save-scmversion
+          sed -i 's|LLVM_VERSION=.*|LLVM_VERSION=${{ github.event.inputs.clang_version }}|' Makefile
+
+      - name: Set clang branch
+        if: ${{ github.event.inputs.clang_branch }}
+        run: |
+          cd kernel
+          ./scripts/setlocalversion --save-scmversion
+          sed -i 's|LLVM_BRANCH=.*|LLVM_BRANCH=${{ github.event.inputs.clang_branch }}|' Makefile
+
+      - name: Build kernel
+        run: |
+          cd kernel
+          export PATH="$PWD/../custom_clang/bin:$PATH"
+          make -j$(nproc --all) \
+            ARCH=${{ github.event.inputs.arch }} \
+            CROSS_COMPILE= \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CC=clang \
+            LD=ld.lld \
+            O=out \
+            ${{ github.event.inputs.kernel_image_name }}
+
+      - name: Create artifacts directory
+        run: |
+          mkdir -p artifacts
+
+      - name: Move kernel image to artifacts directory
+        run: |
+          mv kernel/out/arch/${{ github.event.inputs.arch }}/boot/${{ github.event.inputs.kernel_image_name }} artifacts/
+
+      - name: Zip artifacts
+        run: |
+          cd artifacts
+          zip -r kernel.zip *
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: kernel
+          path: artifacts/kernel.zip
