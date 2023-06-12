@@ -42,6 +42,15 @@ jobs:
         echo "NEED_DTBO=$(cat config.env | grep -w "NEED_DTBO" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
         echo "BUILD_BOOT_IMG=$(cat config.env | grep -w "BUILD_BOOT_IMG" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
         echo "SOURCE_BOOT_IMAGE=$(cat config.env | grep -w "SOURCE_BOOT_IMAGE" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
+        
+  
+    - name: Setup build kernel environment
+      run: |
+        echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "DEVICE=$(echo ${{ env.KERNEL_CONFIG }} | sed 's!vendor/!!;s/_defconfig//;s/_user//;s/-perf//')" >> $GITHUB_ENV
+        sudo apt-get update
+        sudo apt-get install git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
+        mkdir -p $GITHUB_WORKSPACE/kernel_workspace
 
     - name: Download kernel source
       run: |
@@ -57,14 +66,6 @@ jobs:
             echo "FORMAT_MKBOOTING=$(echo `tools/unpack_bootimg.py --boot_img=boot-source.img --format mkbootimg`)" >> $GITHUB_ENV
             echo "HAVE_SOURCE_BOOT_IMAGE=true" >> $GITHUB_ENV
         fi
-
-    - name: Setup build kernel environment
-      run: |
-        echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M")" >> $GITHUB_ENV
-        echo "DEVICE=$(echo ${{ env.KERNEL_CONFIG }} | sed 's!vendor/!!;s/_defconfig//;s/_user//;s/-perf//')" >> $GITHUB_ENV
-        sudo apt-get update
-        sudo apt-get install git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python2 python3
-        mkdir -p $GITHUB_WORKSPACE/kernel_workspace
 
     - name: Download Clang-aosp
       if: env.USE_CUSTOM_CLANG == 'false'
