@@ -155,7 +155,7 @@ jobs:
         max-size: 2G
         
     - name: Clean kernel build directory
-      run: make clean
+      run: make mrproper
 
     - name: Build kernel
       run: |
