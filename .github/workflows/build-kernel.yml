@@ -121,7 +121,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         rm -rf KernelSU
-        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
         echo "UPLOADNAME=-KernelSU" >> $GITHUB_ENV
 
     - name: Setup Configuration for Kernel
